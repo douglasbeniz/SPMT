@@ -1261,6 +1261,9 @@ def main():
     # 
     incrementLED_2 = 0.15
     incrementLED_3 = 0.1
+    #
+    initialVoltageLED_2 = 4.0
+    initialVoltageLED_3 = 4.0
 
     # --------------------------------------------------------------------
     # Save configuration of linearity processing
@@ -1284,8 +1287,8 @@ def main():
     # Repeat acquisition for desired number of steps, recalculating voltages for LEDs 2 and 3
     for step in range(numberOfSteps):
         # Recalculate voltages...
-        voltageLED_2 = 4.0 + (step * incrementLED_2)
-        voltageLED_3 = 4.0 + (step * incrementLED_3)
+        voltageLED_2 = initialVoltageLED_2 + (step * incrementLED_2)
+        voltageLED_3 = initialVoltageLED_3 + (step * incrementLED_3)
 
         # --------------------------------------------------------------------
         # (1) Set voltages...
