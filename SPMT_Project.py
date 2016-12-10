@@ -92,14 +92,23 @@ class SmallPhotoMultiplierTubeController():
         self.numberOfChannels = 8               # Default 8 channels, from 0 to 7
         self.debug = False                      # Default is NO debug, False
         # Managed files
-        self.errorDacFileName       = "./logs/ERROR_DAC_UNICAMP.log"        # File name of error log when DAC presents problem
-        self.errorModuleFileName    = "./logs/ERROR_MODULE_UNICAMP.log"     # File name of error log when Module presents problem
-        self.errorPmtFileName       = "./logs/ERROR_PMT_UNICAMP.log"        # File name of error log when PMT presents problem
-        self.comunicaWaveDumpFileName = "./comunicazioneW.txt"              # File to help contacting WaveDump modified and control it
-        self.darkCountGaussFileName = "./Parametri_gaussiana_dark.cfg"      # File of configuration of gaussian for dark count
-        self._10PercentFileName     = "./Cerca.txt"                         # File with result of 10Percento program execution
-        self.waveOriginFileName     = "./wave%d.txt"
-        self.waveSinglePhotoeletronFileName = "./wave%d_ph.txt"
+        # .log
+        self.errorDacFileName                   = "./logs/ERROR_DAC_UNICAMP.log"            # File name of error log when DAC presents problem
+        self.errorModuleFileName                = "./logs/ERROR_MODULE_UNICAMP.log"         # File name of error log when Module presents problem
+        self.errorPmtFileName                   = "./logs/ERROR_PMT_UNICAMP.log"            # File name of error log when PMT presents problem
+        # .cfg
+        self.darkCountGaussFileName             = "./Parametri_gaussiana_dark.cfg"          # File of configuration of gaussian for dark count
+        self.voltagesGainTableFileName          = "./tabella_tensioni_guadagno_7*10^5.cfg"  # File of configuration of voltages gain
+        # .txt
+        self.comunicaWaveDumpFileName           = "./comunicazioneW.txt"                    # File to help contacting WaveDump modified and control it
+        self._10PercentFileName                 = "./Cerca.txt"                             # File with result of 10Percento program execution
+        self.searchFileName                     = "./Continua.txt"                          # File with result of Ricerca program execution
+        self.singlePhotoelectronFileName        = "./singolo.txt"
+        self.configLinearity                    = "./datilin.txt"
+        self.waveOriginFileName                 = "./wave_%d.txt"
+        self.waveSinglePhotoelectronFileName    = "./wave_%d_ph.txt"
+        self.waveIntenseLEDFileName             = "./wave_%d_LED_high.txt"
+        self.waveLowLEDFileName                 = "./wave_%d_LED_low.txt"
 
         # Instantiate all objects needed to controll SPMT
         self.linduinoObj = Linduino()
@@ -128,6 +137,23 @@ class SmallPhotoMultiplierTubeController():
         for channel in range(self.getNumberOfChannels()):
             self.setVoltageToOneChannel(channel, voltage)
 
+
+    def setVoltageToAllChannelsByArray(self, voltagesArray=[]):
+        status = True
+
+        try:
+            if (len(voltagesArray) == self.getNumberOfChannels()):
+                for channel in range(self.getNumberOfChannels()):
+                    self.setVoltageToOneChannel(channel, voltagesArray[channel])
+            else:
+                status = False
+                print("Inconsistent number of voltage values for all selected channels...")
+        except:
+            status = False
+            print("Exception when trying to set new voltages....")
+            pass
+
+        return status
 
     def setVoltageToOneChannel(self, channel, voltage=0):
         # -----------------------------------------------------------------
@@ -398,6 +424,67 @@ class SmallPhotoMultiplierTubeController():
         return validMonitors
 
 
+    def storeLinearityConfiguration(self, numberOfColpi=30, numberOfSteps=50):
+        status = True
+
+        try:
+            fileLinearity = open(self.configLinearity, "w")
+
+            fileLinearity.write("Numero colpi: " + str(numberOfColpi) + "\n")
+            fileLinearity.write("Numero cicli: " + str(numberOfSteps) + "\n")
+
+            fileLinearity.close()
+        except:
+            status = False
+
+            if (fileLinearity):
+                fileLinearity.close()
+
+            print("Exception when trying to save configuration of linearity processing...")
+            pass
+
+        return status
+
+
+    def storeVoltagesForSinglePhotoelectron(self, voltagesArray, voltageLowLED, voltageFactor=840.0):
+        status = True
+
+        try:
+            if (len(voltagesArray) == self.getNumberOfChannels()):
+                fileSinglePh = open(self.singlePhotoelectronFileName, "w")
+
+                fileSinglePh.write("Tensioni singolo fotoelettrone: ")
+
+                for voltage in voltagesArray:
+                    fileSinglePh.write(str(round((voltageFactor * voltage), 2)) + " ")
+
+                # line-break
+                fileSinglePh.write('\n')
+                fileSinglePh.write("Tensioni basse luce LED: ")
+
+                for channel in range(self.getNumberOfChannels()):
+                    fileSinglePh.write(str(round((voltageLowLED * voltage), 2)) + " ")
+
+                fileSinglePh.close()
+            else:
+                status = False
+
+                if (fileSinglePh):
+                    fileSinglePh.close()
+
+                print("Inconsistent number of elements in list of voltages read regarding the number of channels to process...")
+        except:
+            status = False
+
+            if (fileSinglePh):
+                fileSinglePh.close()
+
+            print("Exception when trying to save voltages for single photoelectron...")
+            pass
+
+        return status
+
+
     def callWaveDump(self):
         status = True
 
@@ -503,8 +590,12 @@ class SmallPhotoMultiplierTubeController():
                 print("---------")
                 print("Inform WaveDump to start acquisition...")
         except:
-            print("Error writing START to file of comunication to WaveDump: %s..." % self.comunicaWaveDumpFileName)
             status = False
+
+            if (fileComunica):
+                fileComunica.close()
+
+            print("Error writing START to file of comunication to WaveDump: %s..." % self.comunicaWaveDumpFileName)
             pass
 
         return status
@@ -528,8 +619,12 @@ class SmallPhotoMultiplierTubeController():
                 print("---------")
                 print("Inform WaveDump to stop acquisition and close...")
         except:
-            print("Error writing STOP to file of comunication to WaveDump: %s..." % self.comunicaWaveDumpFileName)
             status = False
+
+            if (fileComunica):
+                fileComunica.close()
+
+            print("Error writing STOP to file of comunication to WaveDump: %s..." % self.comunicaWaveDumpFileName)
             pass
 
         return status
@@ -586,7 +681,7 @@ class SmallPhotoMultiplierTubeController():
             print("---------")
 
         try:
-            # Remove previous configuration file for dark count
+            # Remove previous configuration file for 10 percent
             if (os.path.exists(self._10PercentFileName)):
                 os.remove(self._10PercentFileName)
 
@@ -613,6 +708,115 @@ class SmallPhotoMultiplierTubeController():
         return status
 
 
+    """
+    Run Ricerca.exe
+    """
+    def callSearchProcess(self):
+        status = True
+
+        if (self.isDebug()):
+            print("---------")
+            print("Calling Ricerca.exe...")
+            print("---------")
+
+        try:
+            # Remove previous configuration file for ricerca
+            if (os.path.exists(self.searchFileName)):
+                os.remove(self.searchFileName)
+
+            subprocess.Popen("./Ricerca.exe")
+
+            # Wait until a new ricerca result file is created
+            while (True):
+                if (os.path.exists(self.searchFileName)):
+                    break
+
+            # Just wait while more
+            sleep(1)
+
+            if (self.isDebug()):
+                print("---------")
+                print("End of processing files by Ricerca.exe")
+                print("---------")
+
+        except:
+            print("Error calling Ricerca.exe...")
+            status = False
+            pass
+
+        return status
+
+
+    """
+    Run Single_ph.exe
+    """
+    def callSinglePhotoelectronProcess(self):
+        status = True
+
+        if (self.isDebug()):
+            print("---------")
+            print("Calling Single_ph.exe...")
+            print("---------")
+
+        try:
+            # Remove previous configuration file for Single Ph
+            if (os.path.exists(self.voltagesGainTableFileName)):
+                os.remove(self.voltagesGainTableFileName)
+
+            subprocess.Popen("./Single_ph.exe")
+
+            # Wait until a new Single Ph result file is created
+            while (True):
+                if (os.path.exists(self.voltagesGainTableFileName)):
+                    break
+
+            # Just wait while more
+            sleep(1)
+
+            if (self.isDebug()):
+                print("---------")
+                print("End of processing files by Single_ph.exe")
+                print("---------")
+
+        except:
+            print("Error calling Single_ph.exe...")
+            status = False
+            pass
+
+        return status
+
+
+    """
+    Run Linearity.exe
+    """
+    def callLinearityProcess(self):
+        status = True
+
+        if (self.isDebug()):
+            print("---------")
+            print("Calling Linearity.exe...")
+            print("---------")
+
+        try:
+            subprocess.Popen("./Linearity.exe")
+
+            # XXX - This should be enhanced... is there a way to know when Linearity.exe is finished?
+            # Wait a while ()
+            sleep(5)
+
+            if (self.isDebug()):
+                print("---------")
+                print("Linearity.exe was started and could be still runnning... if so, wait a while!")
+                print("---------")
+
+        except:
+            print("Error calling Linearity.exe...")
+            status = False
+            pass
+
+        return status
+
+
     def read10PercentResultContent(self):
         result = None
 
@@ -633,16 +837,91 @@ class SmallPhotoMultiplierTubeController():
         return result
 
 
+    def readSearchResultContent(self):
+        result = None
+
+        try:
+            fileResult = open(self.searchFileName, "r")
+        except FileNotFoundError:
+            print("Error when loading Ricerca.exe results file...")
+            return result
+
+        try:
+            # It should have just one line
+            content = fileResult.readline()
+            result = int(content.split(' ')[0])
+        except:
+            print("Error in content of Ricerca.exe results file...")
+            return result
+
+        return result
+
+
+    def readVoltagesCalculatedBySinglePhotoelectron(self, voltagesArray, voltageFactor=1.190476e-03):
+        status = True
+
+        try:
+            fileGainConfig = open(self.voltagesGainTableFileName, "r")
+
+            linesOfGainFile = fileGainConfig.readlines()
+
+            for index, voltage in enumerate(voltagesArray):
+                try:
+                    voltage = round(float(linesOfGainFile[(index*2) +1].split(' ')[2]), 3)
+                    voltagesArray[index] = round((voltage * voltageFactor), 3)
+                except IndexError:
+                    status = False
+                    print("Exception when trying to read gain voltage for channel %d..." % index)
+                    pass
+
+            fileGainConfig.close()
+        except:
+            status = False
+
+            if (fileGainConfig):
+                fileGainConfig.close()
+
+            print("Exception when processing voltages gain table file, %s..." % self.voltagesGainTableFileName)
+            pass
+
+        return voltagesArray, status
+
+
     def renameWaveFilesForSinglePhotoelectron(self):
         for channel in range(self.getNumberOfChannels()):
             try:
                 if (os.path.exists(self.waveOriginFileName % channel)):
-                    os.rename(self.waveOriginFileName % channel, self.waveSinglePhotoeletronFileName % channel)
+                    os.rename(self.waveOriginFileName % channel, self.waveSinglePhotoelectronFileName % channel)
                 else:
                     print("Error, file not found: %s..." % (self.waveOriginFileName % channel))
             except:
                 print("Exception when renaming wave files, at channel %d..." % channel)
                 pass
+
+
+    def renameWaveFilesForIntenseLED(self):
+        for channel in range(self.getNumberOfChannels()):
+            try:
+                if (os.path.exists(self.waveOriginFileName % channel)):
+                    os.rename(self.waveOriginFileName % channel, self.waveIntenseLEDFileName % channel)
+                else:
+                    print("Error, file not found: %s..." % (self.waveOriginFileName % channel))
+            except:
+                print("Exception when renaming wave files, at channel %d..." % channel)
+                pass
+
+
+    def renameWaveFilesForLowLED(self):
+        for channel in range(self.getNumberOfChannels()):
+            try:
+                if (os.path.exists(self.waveOriginFileName % channel)):
+                    os.rename(self.waveOriginFileName % channel, self.waveLowLEDFileName % channel)
+                else:
+                    print("Error, file not found: %s..." % (self.waveOriginFileName % channel))
+            except:
+                print("Exception when renaming wave files, at channel %d..." % channel)
+                pass
+
 
     def closeConnection(self):
         if (self.linduinoObj):
@@ -676,8 +955,10 @@ def abortProgram(spmtController=None, executionStep="unknow"):
         print("Error when %s.  Aborting the program..." % (executionStep))
         print("----------------------------------------------------------------")
 
-        # Close connection, if any
         if (spmtController):
+            # Turn the voltages off...
+            spmtControllerObj.setVoltageToAllChannels(voltage=0)
+            # Close connection, if any
             spmtController.closeConnection()
 
 
@@ -688,11 +969,13 @@ def main():
     print("----------------------------------------------------------------")
     print("-:- Start of program -:-")
     print("----------------------------------------------------------------")
+    
+    activeDebugging = True
 
     # Instantiate an object of SMPT Controller
     spmtControllerObj = SmallPhotoMultiplierTubeController()
     # Only for commissioning
-    spmtControllerObj.setDebug(True)
+    spmtControllerObj.setDebug(activeDebugging)
 
     print("----------------------------------------------------------------")
     print("-:- Set initial voltages -:-")
@@ -780,7 +1063,16 @@ def main():
     c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
                 #   then, next steps to increment/decrement LED voltage will be more thick;
 
+    maximumTries = 10
+    currentTry = 0
+
     while (True):
+        # Inform details if debugging
+        if (activeDebugging):
+            print("---------")
+            print("Setting voltage %.3f to LED 1..." % (voltageLED_1/2))
+            print("---------")
+
         # LED_1 is connected to channel 8, so, simply set voltage output to that channel
         spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=(voltageLED_1/2))
 
@@ -801,7 +1093,7 @@ def main():
         a = spmtControllerObj.read10PercentResultContent()
 
         # ---------
-        if (a == 0):
+        if ((a == 0) || (currentTry >= maximumTries)):
             break
 
         # ---------
@@ -810,28 +1102,261 @@ def main():
         # ---------
         c = a
 
+        # This is for instrumentation only
+        currentTry += 1
+
     # --------------------------------------------------------------------
     # Acquire new WaveDump files with LED configured with 10 percent
     # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=100000)     # PRODUCTION 
     triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=1000)
 
     if (triggered):
-        # Then rename files for single photoeletron
+        # Then rename files for single photoelectron
         spmtControllerObj.renameWaveFilesForSinglePhotoelectron()
     else:
         abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at 10 percent")
         return -1
 
+    print("----------------------------------------------------------------")
+    print("-:- Intense LED light -:-")
+    print("----------------------------------------------------------------")
+    # --------------------------------------------------------------------
+    # Intense LED light start...
+    # --------------------------------------------------------------------
+    # Initial voltage for LED_1
+    voltageLED_1 = 7
+    # Initial values of control (auxiliary) parameters
+    a = 0       # Stores the value returned by 10Percento.exe program;
+    b = 0       # Stores returned value of 10Percento.exe program in previous execution;
+    c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
+                #   then, next steps to increment/decrement LED voltage will be more thick;
+
+    maximumTries = 10
+    currentTry = 0
+
+    while (True):
+        # Inform details if debugging
+        if (activeDebugging):
+            print("---------")
+            print("Setting voltage %.3f to LED 1..." % (voltageLED_1/2))
+            print("---------")
+
+        # LED_1 is connected to channel 8, so, simply set voltage output to that channel
+        spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=(voltageLED_1/2))
+
+        # ----------------------------------------------------------------
+        # Trigger CAEN digitizer running WaveDump
+        # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=150)     # PRODUCTION
+        triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=150)
+
+        if (triggered):
+            # Then process Search ("Ricerca") output files of WaveDump
+            spmtControllerObj.callSearchProcess()
+        else:
+            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump during intense LED measuring")
+            return -1
+
+        # ----------------------------------------------------------------
+        # Logic to incread/decrease LED_1 intensity
+        a = spmtControllerObj.readSearchResultContent()
+
+        # ---------
+        if ((a == 0) || (currentTry >= maximumTries)):
+            break
+
+        # ---------
+        voltageLED_1, a, b, c = calcNewVoltageLED(voltageLED_1, a, b, c, 0.5, 5)
+
+        # ---------
+        c = a
+
+        # This is for instrumentation only
+        currentTry += 1
+
+    # --------------------------------------------------------------------
+    # Acquire new WaveDump files with LED configured with high intensity
+    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)     # PRODUCTION 
+    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)
+
+    if (triggered):
+        # Then rename files for intense LED
+        spmtControllerObj.renameWaveFilesForIntenseLED()
+    else:
+        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at intense LED")
+        return -1
 
     print("----------------------------------------------------------------")
-    print("-:- Inizio luce LED intensa -:-")
+    print("-:- Low LED light -:-")
     print("----------------------------------------------------------------")
+    # --------------------------------------------------------------------
+    # Low LED light start...
+    # --------------------------------------------------------------------
+    # Send initial voltage
+    lowLEDVoltage = 1.25
+    # Reset all voltages of operational channels
+    spmtControllerObj.setVoltageToAllChannels(voltage=lowLEDVoltage/2)
+
+    # --------------------------------------------------------------------
+    # Store voltages for single photoelectron
+    storedVoltagesPh = spmtControllerObj.storeVoltagesForSinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageLowLED=lowLEDVoltage, voltageFactor=(2100.0/2.5))
+
+    if (not storedVoltagesPh):
+        abortProgram(spmtController=spmtControllerObj, executionStep="storing voltages for single photoelectron and low LED")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Acquire new WaveDump files with LED configured with low intensity
+    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)     # PRODUCTION 
+    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)
+
+    if (triggered):
+        # Then rename files for low LED
+        spmtControllerObj.renameWaveFilesForLowLED()
+    else:
+        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at low LED")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Finally, call Single Photoelectron processing
+    processedSingle = spmtControllerObj.callSinglePhotoelectronProcess()
+
+    if (not processedSingle):
+        abortProgram(spmtController=spmtControllerObj, executionStep="processing single photoelectron from acquired data")
+        return -1
 
     print("----------------------------------------------------------------")
     print("-:- Linearity -:-")
     print("----------------------------------------------------------------")
     # --------------------------------------------------------------------
     # Linearity...
+    # --------------------------------------------------------------------
+    # Power off LED_1 (of single photoelectron) which is connected to channel 8, so, simply set "0" voltage output to that channel
+    voltageLED_1 = 0
+    #
+    spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=voltageLED_1)
+
+    # --------------------------------------------------------------------
+    # Read voltages gain to calculate new voltages to set before linearity procedure...
+    listOfNewVoltages, readVoltagesGain = spmtControllerObj.readVoltagesCalculatedBySinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageFactor=(2.5/2100.0))
+
+    if (not readVoltagesGain):
+        abortProgram(spmtController=spmtControllerObj, executionStep="reading voltages gain calculated by single photoelectron")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Reset all voltages of operational channels (divide each element by 2 before to pass it)
+    setNewVoltages = spmtControllerObj.setVoltageToAllChannelsByArray(voltagesArray=[i / 2 for i in listOfNewVoltages])
+
+    if (not setNewVoltages):
+        abortProgram(spmtController=spmtControllerObj, executionStep="setting new voltages before linearity processing")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Parameters for linearity processing
+    numberOfColpi = 30
+    numberOfSteps = 50
+    # 
+    voltageLED_2 = 0
+    voltageLED_3 = 0
+    # 
+    incrementLED_2 = 0.15
+    incrementLED_3 = 0.1
+
+    # --------------------------------------------------------------------
+    # Save configuration of linearity processing
+    savedConfigLinearity = spmtControllerObj.storeLinearityConfiguration(numberOfColpi=numberOfColpi, numberOfSteps=numberOfSteps)
+
+    if (not savedConfigLinearity):
+        abortProgram(spmtController=spmtControllerObj, executionStep="saving configuration file with parameters for linearity processing")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Acquire new WaveDump files meanwhile alternate LED 2 and 3 voltages during desired number of steps
+    startedWaveDump = spmtControllerObj.startWaveDumpAcquisition()
+    # Call WaveDump program
+    startedWaveDump = startedWaveDump and spmtControllerObj.callWaveDump()
+
+    if (not startedWaveDump):
+        abortProgram(spmtController=spmtControllerObj, executionStep="starting WaveDump during linearity data acquisition")
+        return -1
+
+    # --------------------------------------------------------------------
+    # Repeat acquisition for desired number of steps, recalculating voltages for LEDs 2 and 3
+    for step in range(numberOfSteps):
+        # Recalculate voltages...
+        voltageLED_2 = 4.0 + (step * incrementLED_2)
+        voltageLED_3 = 4.0 + (step * incrementLED_3)
+
+        # --------------------------------------------------------------------
+        # (1) Set voltages...
+        # --------------------------------------------------------------------
+        # LED_2 in channel "9"
+        spmtControllerObj.setVoltageToOneChannel(channel=9, voltage=(voltageLED_2 / 2))
+        # LED_3 in channel "10"
+        spmtControllerObj.setVoltageToOneChannel(channel=10, voltage=0)
+
+        if (activeDebugging):
+            print("---------")
+            print("LEDs during linearity data acquisition: <A> ON and <B> OFF.")
+            print("---------")
+
+        # Call Trigger
+        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
+
+        if (not triggered):
+            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+            return -1
+
+        # --------------------------------------------------------------------
+        # (2) Set voltages...
+        # --------------------------------------------------------------------
+        # LED_3 in channel "10"
+        spmtControllerObj.setVoltageToOneChannel(channel=10, voltage=(voltageLED_3 / 2))
+
+        if (activeDebugging):
+            print("---------")
+            print("LEDs during linearity data acquisition: <A> ON and <B> ON.")
+            print("---------")
+
+        # Call Trigger
+        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
+
+        if (not triggered):
+            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+            return -1
+
+        # --------------------------------------------------------------------
+        # (3) Set voltages...
+        # --------------------------------------------------------------------
+        # LED_2 in channel "9"
+        spmtControllerObj.setVoltageToOneChannel(channel=9, voltage=0)
+
+        if (activeDebugging):
+            print("---------")
+            print("LEDs during linearity data acquisition: <A> OFF and <B> ON.")
+            print("---------")
+
+        # Call Trigger
+        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
+
+        if (not triggered):
+            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+            return -1
+
+    # --------------------------------------------------------------------
+    # Inform WaveDump to stop acquisition and close
+    stopedWaveDump = spmtControllerObj.stopWaveDumpAcquisition()
+
+    if (stopedWaveDump):
+        # Finally, call Linearity processing
+        processedLinearity = spmtControllerObj.callLinearityProcess()
+
+        if (not processedLinearity):
+            abortProgram(spmtController=spmtControllerObj, executionStep="processing linearity from acquired data")
+            return -1
+    else:
+        abortProgram(spmtController=spmtControllerObj, executionStep="stopping WaveDump during linearity data acquisition")
+        return -1
 
     print("----------------------------------------------------------------")
     print("-:- Turn the voltages off -:-")
