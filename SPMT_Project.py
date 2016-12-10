@@ -1093,7 +1093,7 @@ def main():
         a = spmtControllerObj.read10PercentResultContent()
 
         # ---------
-        if ((a == 0) || (currentTry >= maximumTries)):
+        if ((a == 0) or (currentTry >= maximumTries)):
             break
 
         # ---------
@@ -1161,7 +1161,7 @@ def main():
         a = spmtControllerObj.readSearchResultContent()
 
         # ---------
-        if ((a == 0) || (currentTry >= maximumTries)):
+        if ((a == 0) or (currentTry >= maximumTries)):
             break
 
         # ---------
