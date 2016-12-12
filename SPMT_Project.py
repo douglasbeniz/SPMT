@@ -8,6 +8,8 @@ import os
 
 from time import sleep
 
+from PyQt5.QtCore import pyqtSignal, QObject
+
 """
 Abstraction of Linduino board
 """
@@ -370,7 +372,7 @@ class SmallPhotoMultiplierTubeController():
         return monitorRead
 
 
-    def validateModuleMonitor(self, voltagesArray, monitorArray, vFactor=5.1, iFactor=1.2541993281, maxVMonError=0.03, maxIMonError=0.03):
+    def validateModuleMonitor(self, voltagesArray, monitorArray, vFactor=2.0, iFactor=1.2541993281, maxVMonError=0.03, maxIMonError=0.03):
         errorModFile = open(self.errorModuleFileName, "w")
         errorPmtFile = open(self.errorPmtFileName, "w")
 
@@ -932,450 +934,512 @@ class SmallPhotoMultiplierTubeController():
         self.closeConnection()
 
 
-# ----------------------------------------------------------------
-def calcNewVoltageLED(voltageLED, a, b, c, factor1, factor2):
-    if ((a == 2) and (c != 1)):
-        voltageLED = voltageLED + ((factor1) / (factor2**b))
+"""
+Orchestrator()
+"""
+class Orchestrator(QObject):
+    # ----------------------------------------------
+    # Signals to communicate with UI
+    informExecution = pyqtSignal(str)
+    fillTable = pyqtSignal(int, int, str)
 
-    if ((a == 2) and (c == 1)):
-        b += 1
-        voltageLED = voltageLED + ((factor1) / (factor2**b))
+    def __init__(self):
+        QObject.__init__(self)
 
-    if ((a == 1) and (c != 2)):
-        voltageLED = voltageLED - ((factor1) / (factor2**b))
+        self.activeDebugging = True
 
-    if ((a == 1) and (c != 2)):
-        voltageLED = voltageLED - ((factor1) / (factor2**b))
+        # -------------------------------------------
+        # Local attributes - Values for production
+        self.initialVoltage         = 1.75
+        self.maxVoltageError        = 0.02
+        self.voltageFactor          = 2.0       # 5.1
+        self.currentFactor          = ((2100/2.5)*(100/66975))
+        self.maxVMonError           = 0.03      # 0.7
+        self.maxIMonError           = 0.03      # 0.5
+        self.darkCountFreq          = 100
+        self.darkCountPulses        = 100000
+        self.singlePhOptFreq        = 100
+        self.singlePhOptPulses      = 5000
+        self.singlePhAcqFreq        = 100
+        self.singlePhAcqPulses      = 100000
+        self.singlePhVoltageLED_1   = 2.5
+        self.highIntensVoltageLED_1 = 7.0
+        self.highIntensOptFreq      = 10
+        self.highIntensOptPulses    = 150
+        self.highIntensAcqFreq      = 10
+        self.highIntensAcqPulses    = 600
+        self.lowIntensVoltageLEDs   = 1.25
+        self.lowIntensVoltageFactor = (2100.0/2.5)
+        self.lowIntensAcqFreq       = 10
+        self.lowIntensAcqPulses     = 600
+        self.channelOfLED_1         = 8
+        self.channelOfLED_2         = 9
+        self.channelOfLED_3         = 10
+        self.linearityVoltageFactor = (2.5/2100.0)
+        self.numberOfColpi          = 30
+        self.numberOfSteps          = 50
+        self.voltageLED_2           = 0
+        self.voltageLED_3           = 0
+        self.incrementLED_2         = 0.15
+        self.incrementLED_3         = 0.1
+        self.initialVoltageLED_2    = 4.0
+        self.initialVoltageLED_3    = 4.0
+        self.linearityAcqFreq       = 10
 
-    return voltageLED, a, b, c
+        # Instantiate an object of SMPT Controller
+        self.spmtControllerObj = SmallPhotoMultiplierTubeController()
+
+    # ----------------------------------------------------------------
+    def setDebug(self, debug=True):
+        self.activeDebugging = debug
+
+    # ----------------------------------------------------------------
+    def calcNewVoltageLED(self, voltageLED, a, b, c, factor1, factor2):
+        if ((a == 2) and (c != 1)):
+            voltageLED = voltageLED + ((factor1) / (factor2**b))
+
+        if ((a == 2) and (c == 1)):
+            b += 1
+            voltageLED = voltageLED + ((factor1) / (factor2**b))
+
+        if ((a == 1) and (c != 2)):
+            voltageLED = voltageLED - ((factor1) / (factor2**b))
+
+        if ((a == 1) and (c != 2)):
+            voltageLED = voltageLED - ((factor1) / (factor2**b))
+
+        return voltageLED, a, b, c
 
 
-def abortProgram(spmtController=None, executionStep="unknow"):
+    # ----------------------------------------------------------------
+    def abortProgram(self, executionStep="unknow"):
+            print("----------------------------------------------------------------")
+            print("Error when %s.  Aborting the program..." % (executionStep))
+            print("----------------------------------------------------------------")
+            self.informExecution.emit("----------------------------------------------------------------")
+            self.informExecution.emit("Error when %s.  Aborting the program..." % (executionStep))
+
+            if (self.spmtControllerObj):
+                # Turn the voltages off...
+                self.spmtControllerObj.setVoltageToAllChannels(voltage=0)
+                # Close connection, if any
+                self.spmtControllerObj.closeConnection()
+
+
+    """
+    Execute()
+    """
+    def executeProgram(self):
         print("----------------------------------------------------------------")
-        print("Error when %s.  Aborting the program..." % (executionStep))
+        print("-:- Start of program -:-")
         print("----------------------------------------------------------------")
+         # Only for commissioning
+        self.spmtControllerObj.setDebug(self.activeDebugging)
 
-        if (spmtController):
-            # Turn the voltages off...
-            spmtControllerObj.setVoltageToAllChannels(voltage=0)
-            # Close connection, if any
-            spmtController.closeConnection()
+        print("----------------------------------------------------------------")
+        print("-:- Set initial voltages -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Initialize all voltages of operational channels
+        self.spmtControllerObj.setVoltageToAllChannels(voltage=self.initialVoltage/2)
+        self.informExecution.emit("Setting initial voltages to: %.3f..." % float(self.initialVoltage/2))
+
+        print("----------------------------------------------------------------")
+        print("-:- Enable MUX and get current Voltages -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Enable MUX and check voltages...
+        listOfVoltagesRead = self.spmtControllerObj.setMuxToAllChannels(enable=True)
+        self.informExecution.emit("Getting voltages from MUX...")
+
+        # Emit signal to inform UI table...
+        for index, voltage in enumerate(listOfVoltagesRead):
+            self.fillTable.emit(index, 0, str(round(float(voltage), 3)))
+
+        print("----------------------------------------------------------------")
+        print("-:- Disble MUX -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Disbale MUX...
+        self.spmtControllerObj.setMuxToOneChannel()
+        self.informExecution.emit("Disabling MUX...")
+
+        print("----------------------------------------------------------------")
+        print("-:- Validate current voltages -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Validate read voltages
+        self.informExecution.emit("Validating voltages...")
+        validVoltages = self.spmtControllerObj.validateDACVoltages(voltagesArray=listOfVoltagesRead, reference=self.initialVoltage/2, maxError=self.maxVoltageError)
+
+        if (not validVoltages):
+            self.abortProgram(executionStep="validating DAC voltages")
+            return -1
+        else:
+            print("Voltages OK!")
+            self.informExecution.emit("Voltages OK!")
+
+        print("----------------------------------------------------------------")
+        print("-:- Read IMon and VMon -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Read IMon and VMon...
+        self.informExecution.emit("Reading monitors (IMon and VMon)...")
+        listOfMonitorsRead = self.spmtControllerObj.readMonitorsOfAllChannels()
+
+        # Emit signal to inform UI table...
+        for index, (monitor, voltage) in enumerate(zip(listOfMonitorsRead, listOfVoltagesRead)):
+            # VMon
+            self.fillTable.emit(index, 1, str(round(float(monitor[1]), 3)))
+            # IMon
+            self.fillTable.emit(index, 2, str(round(float(monitor[0]), 3)))
+
+        print("----------------------------------------------------------------")
+        print("-:- Validate IMon and VMon -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Validate IMon and VMon...
+        self.informExecution.emit("Validating monitors (IMon and VMon)...")
+        validMonitor = self.spmtControllerObj.validateModuleMonitor(voltagesArray=listOfVoltagesRead, monitorArray=listOfMonitorsRead, vFactor=self.voltageFactor, iFactor=self.currentFactor, maxVMonError=self.maxVMonError, maxIMonError=self.maxIMonError)
+
+        if (not validMonitor):
+            self.abortProgram(executionStep="validating IMon (PMT) and VMon (module HV)")
+            return -1
+        else:
+            print("IMon and VMon OK!")
+            self.informExecution.emit("IMon and VMon OK!")
+
+        print("----------------------------------------------------------------")
+        print("-:- Dark count -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Dark count...
+        self.informExecution.emit("Acquiring and processing dark count...")
+        triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.darkCountFreq, numberOfPulses=self.darkCountPulses)
+
+        if (triggered):
+            # Then process (Dark Count) output files of WaveDump
+            self.spmtControllerObj.callDarkCountProcess()
+        else:
+            self.abortProgram(executionStep="triggering digitizer and running WaveDump")
+            return -1
+
+        print("----------------------------------------------------------------")
+        print("-:- Single photoelectron -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Single photoelectron...
+        self.informExecution.emit("Acquiring and processing single photoelectron...")
+        # --------------------------------------------------------------------
+        # Initial values of control (auxiliary) parameters
+        a = 0       # Stores the value returned by 10Percento.exe program;
+        b = 0       # Stores returned value of 10Percento.exe program in previous execution;
+        c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
+                    #   then, next steps to increment/decrement LED voltage will be more thick;
+
+        maximumTries = 10
+        currentTry = 0
+
+        while (True):
+            # Inform details if debugging
+            if (self.activeDebugging):
+                print("---------")
+                print("Setting voltage %.3f to LED 1..." % (self.singlePhVoltageLED_1/2))
+                print("---------")
+
+            # LED_1 is connected to channel 8, so, simply set voltage output to that channel
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_1, voltage=(self.singlePhVoltageLED_1/2))
+
+            # ----------------------------------------------------------------
+            # Trigger CAEN digitizer running WaveDump
+            triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.singlePhOptFreq, numberOfPulses=self.singlePhOptPulses)
+
+            if (triggered):
+                # Then process (10 Percent) output files of WaveDump
+                self.spmtControllerObj.call10PercentProcess()
+            else:
+                self.abortProgram(executionStep="triggering digitizer and running WaveDump during single photoelectron measuring")
+                return -1
+
+            # ----------------------------------------------------------------
+            # Logic to incread/decrease LED_1 intensity
+            a = self.spmtControllerObj.read10PercentResultContent()
+
+            # ---------
+            if ((a == 0) or (currentTry >= maximumTries)):
+                break
+
+            # ---------
+            self.singlePhVoltageLED_1, a, b, c = self.calcNewVoltageLED(self.singlePhVoltageLED_1, a, b, c, 0.2, 5)
+
+            # ---------
+            c = a
+
+            # This is for instrumentation only
+            currentTry += 1
+
+        # --------------------------------------------------------------------
+        # Acquire new WaveDump files with LED configured with 10 percent
+        triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.singlePhAcqFreq, numberOfPulses=self.singlePhAcqPulses)
+
+        if (triggered):
+            # Then rename files for single photoelectron
+            self.spmtControllerObj.renameWaveFilesForSinglePhotoelectron()
+        else:
+            self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire waves at 10 percent")
+            return -1
+
+        print("----------------------------------------------------------------")
+        print("-:- Intense LED light -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Intense LED light start...
+        self.informExecution.emit("Acquiring and processing intense LED light...")
+        # --------------------------------------------------------------------
+        # Initial values of control (auxiliary) parameters
+        a = 0       # Stores the value returned by 10Percento.exe program;
+        b = 0       # Stores returned value of 10Percento.exe program in previous execution;
+        c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
+                    #   then, next steps to increment/decrement LED voltage will be more thick;
+
+        maximumTries = 10
+        currentTry = 0
+
+        while (True):
+            # Inform details if debugging
+            if (self.activeDebugging):
+                print("---------")
+                print("Setting voltage %.3f to LED 1..." % (self.highIntensVoltageLED_1/2))
+                print("---------")
+
+            # LED_1 is connected to channel 8, so, simply set voltage output to that channel
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_1, voltage=(self.highIntensVoltageLED_1/2))
+
+            # ----------------------------------------------------------------
+            # Trigger CAEN digitizer running WaveDump
+            triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.highIntensOptFreq, numberOfPulses=self.highIntensOptPulses)
+
+            if (triggered):
+                # Then process Search ("Ricerca") output files of WaveDump
+                self.spmtControllerObj.callSearchProcess()
+            else:
+                self.abortProgram(executionStep="triggering digitizer and running WaveDump during intense LED measuring")
+                return -1
+
+            # ----------------------------------------------------------------
+            # Logic to incread/decrease LED_1 intensity
+            a = self.spmtControllerObj.readSearchResultContent()
+
+            # ---------
+            if ((a == 0) or (currentTry >= maximumTries)):
+                break
+
+            # ---------
+            self.highIntensVoltageLED_1, a, b, c = self.calcNewVoltageLED(self.highIntensVoltageLED_1, a, b, c, 0.5, 5)
+
+            # ---------
+            c = a
+
+            # This is for instrumentation only
+            currentTry += 1
+
+        # --------------------------------------------------------------------
+        # Acquire new WaveDump files with LED configured with high intensity
+        triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.highIntensAcqFreq, numberOfPulses=self.highIntensAcqPulses)
+
+        if (triggered):
+            # Then rename files for intense LED
+            self.spmtControllerObj.renameWaveFilesForIntenseLED()
+        else:
+            self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire waves at intense LED")
+            return -1
+
+        print("----------------------------------------------------------------")
+        print("-:- Low LED light -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Low LED light start...
+        self.informExecution.emit("Acquiring and processing low LED light...")
+        # --------------------------------------------------------------------
+        # Reset all voltages of operational channels
+        self.spmtControllerObj.setVoltageToAllChannels(voltage=self.lowIntensVoltageLEDs/2)
+
+        # --------------------------------------------------------------------
+        # Store voltages for single photoelectron
+        storedVoltagesPh = self.spmtControllerObj.storeVoltagesForSinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageLowLED=self.lowIntensVoltageLEDs, voltageFactor=self.lowIntensVoltageFactor)
+
+        if (not storedVoltagesPh):
+            self.abortProgram(executionStep="storing voltages for single photoelectron and low LED")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Acquire new WaveDump files with LED configured with low intensity
+        triggered = self.spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=self.lowIntensAcqFreq, numberOfPulses=self.lowIntensAcqPulses)
+
+        if (triggered):
+            # Then rename files for low LED
+            self.spmtControllerObj.renameWaveFilesForLowLED()
+        else:
+            self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire waves at low LED")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Finally, call Single Photoelectron processing
+        processedSingle = self.spmtControllerObj.callSinglePhotoelectronProcess()
+
+        if (not processedSingle):
+            self.abortProgram(executionStep="processing single photoelectron from acquired data")
+            return -1
+
+        print("----------------------------------------------------------------")
+        print("-:- Linearity -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Linearity...
+        self.informExecution.emit("Acquiring and processing linearity...")
+        # --------------------------------------------------------------------
+        # Power off LED_1 (of single photoelectron) which is connected to channel 8, so, simply set "0" voltage output to that channel
+        self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_1, voltage=0)
+
+        # --------------------------------------------------------------------
+        # Read voltages gain to calculate new voltages to set before linearity procedure...
+        listOfNewVoltages, readVoltagesGain = self.spmtControllerObj.readVoltagesCalculatedBySinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageFactor=self.linearityVoltageFactor)
+
+        if (not readVoltagesGain):
+            self.abortProgram(executionStep="reading voltages gain calculated by single photoelectron")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Reset all voltages of operational channels (divide each element by 2 before to pass it)
+        setNewVoltages = self.spmtControllerObj.setVoltageToAllChannelsByArray(voltagesArray=[i / 2 for i in listOfNewVoltages])
+
+        if (not setNewVoltages):
+            self.abortProgram(executionStep="setting new voltages before linearity processing")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Save configuration of linearity processing
+        savedConfigLinearity = self.spmtControllerObj.storeLinearityConfiguration(numberOfColpi=numberOfColpi, numberOfSteps=numberOfSteps)
+
+        if (not savedConfigLinearity):
+            self.abortProgram(executionStep="saving configuration file with parameters for linearity processing")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Acquire new WaveDump files meanwhile alternate LED 2 and 3 voltages during desired number of steps
+        startedWaveDump = self.spmtControllerObj.startWaveDumpAcquisition()
+        # Call WaveDump program
+        startedWaveDump = startedWaveDump and self.spmtControllerObj.callWaveDump()
+
+        if (not startedWaveDump):
+            self.abortProgram(executionStep="starting WaveDump during linearity data acquisition")
+            return -1
+
+        # --------------------------------------------------------------------
+        # Repeat acquisition for desired number of steps, recalculating voltages for LEDs 2 and 3
+        for step in range(numberOfSteps):
+            # Recalculate voltages...
+            self.voltageLED_2 = self.initialVoltageLED_2 + (step * self.incrementLED_2)
+            self.voltageLED_3 = self.initialVoltageLED_3 + (step * self.incrementLED_3)
+
+            # --------------------------------------------------------------------
+            # (1) Set voltages...
+            # --------------------------------------------------------------------
+            # LED_2 in channel "9"
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_2, voltage=(self.voltageLED_2 / 2))
+            # LED_3 in channel "10"
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_3, voltage=0)
+
+            if (self.activeDebugging):
+                print("---------")
+                print("LEDs during linearity data acquisition: <A> ON and <B> OFF.")
+                print("---------")
+
+            # Call Trigger
+            triggered = self.spmtControllerObj.triggerDigitizer(frequency=self.linearityAcqFreq, numberOfPulses=self.numberOfColpi)
+
+            if (not triggered):
+                self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+                return -1
+
+            # --------------------------------------------------------------------
+            # (2) Set voltages...
+            # --------------------------------------------------------------------
+            # LED_3 in channel "10"
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_3, voltage=(self.voltageLED_3 / 2))
+
+            if (self.activeDebugging):
+                print("---------")
+                print("LEDs during linearity data acquisition: <A> ON and <B> ON.")
+                print("---------")
+
+            # Call Trigger
+            triggered = self.spmtControllerObj.triggerDigitizer(frequency=self.linearityAcqFreq, numberOfPulses=self.numberOfColpi)
+
+            if (not triggered):
+                self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+                return -1
+
+            # --------------------------------------------------------------------
+            # (3) Set voltages...
+            # --------------------------------------------------------------------
+            # LED_2 in channel "9"
+            self.spmtControllerObj.setVoltageToOneChannel(channel=self.channelOfLED_2, voltage=0)
+
+            if (self.activeDebugging):
+                print("---------")
+                print("LEDs during linearity data acquisition: <A> OFF and <B> ON.")
+                print("---------")
+
+            # Call Trigger
+            triggered = self.spmtControllerObj.triggerDigitizer(frequency=self.linearityAcqFreq, numberOfPulses=self.numberOfColpi)
+
+            if (not triggered):
+                self.abortProgram(executionStep="triggering digitizer and running WaveDump to acquire linearity data")
+                return -1
+
+        # --------------------------------------------------------------------
+        # Inform WaveDump to stop acquisition and close
+        stopedWaveDump = self.spmtControllerObj.stopWaveDumpAcquisition()
+
+        if (stopedWaveDump):
+            # Finally, call Linearity processing
+            processedLinearity = self.spmtControllerObj.callLinearityProcess()
+
+            if (not processedLinearity):
+                self.abortProgram(executionStep="processing linearity from acquired data")
+                return -1
+        else:
+            self.abortProgram(executionStep="stopping WaveDump during linearity data acquisition")
+            return -1
+
+        print("----------------------------------------------------------------")
+        print("-:- Turn the voltages off -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # Turn the voltages off...
+        self.informExecution.emit("Turning off the voltages...")
+        self.spmtControllerObj.setVoltageToAllChannels(voltage=0)
+
+        print("----------------------------------------------------------------")
+        print("-:- End of program -:-")
+        print("----------------------------------------------------------------")
+        # --------------------------------------------------------------------
+        # End
+        self.informExecution.emit("----------------------------------------------------------------")
+        self.informExecution.emit("End of program!")
+        self.spmtControllerObj.closeConnection()
+
+        return 0
 
 
+# --------------------------------------------------------------------
 """
 Main()
 """
 def main():
-    print("----------------------------------------------------------------")
-    print("-:- Start of program -:-")
-    print("----------------------------------------------------------------")
-    
-    activeDebugging = True
-
-    # Instantiate an object of SMPT Controller
-    spmtControllerObj = SmallPhotoMultiplierTubeController()
-    # Only for commissioning
-    spmtControllerObj.setDebug(activeDebugging)
-
-    print("----------------------------------------------------------------")
-    print("-:- Set initial voltages -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Send initial voltage
-    initialVoltage = 1.75
-    # Initialize all voltages of operational channels
-    spmtControllerObj.setVoltageToAllChannels(voltage=initialVoltage/2)
-
-    print("----------------------------------------------------------------")
-    print("-:- Enable MUX and get current Voltages -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Enable MUX and check voltages...
-    listOfVoltagesRead = spmtControllerObj.setMuxToAllChannels(enable=True)
-
-    print("----------------------------------------------------------------")
-    print("-:- Disble MUX -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Disbale MUX...
-    spmtControllerObj.setMuxToOneChannel()
-
-    print("----------------------------------------------------------------")
-    print("-:- Validate current voltages -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Validate read voltages
-    validVoltages = spmtControllerObj.validateDACVoltages(voltagesArray=listOfVoltagesRead, reference=initialVoltage/2, maxError=0.02)
-
-    if (not validVoltages):
-        abortProgram(spmtController=spmtControllerObj, executionStep="validating DAC voltages")
-        return -1
-    else:
-        print("Voltages OK!")
-
-    print("----------------------------------------------------------------")
-    print("-:- Read IMon and VMon -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Read IMon and VMon...
-    listOfMonitorsRead = spmtControllerObj.readMonitorsOfAllChannels()
-
-
-    print("----------------------------------------------------------------")
-    print("-:- Validate IMon and VMon -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Validate IMon and VMon...
-    validMonitor = spmtControllerObj.validateModuleMonitor(voltagesArray=listOfVoltagesRead, monitorArray=listOfMonitorsRead, vFactor=5.1, iFactor=((2100/2.5)*(100/66975)), maxVMonError=0.7, maxIMonError=0.5)
-
-    if (not validMonitor):
-        abortProgram(spmtController=spmtControllerObj, executionStep="validating IMon (PMT) and VMon (module HV)")
-        return -1
-    else:
-        print("IMon and VMon OK!")
-
-    print("----------------------------------------------------------------")
-    print("-:- Dark count -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Dark count...
-    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=100000)     # PRODUCTION
-    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=1000)
-
-    if (triggered):
-        # Then process (Dark Count) output files of WaveDump
-        spmtControllerObj.callDarkCountProcess()
-    else:
-        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump")
-        return -1
-
-    print("----------------------------------------------------------------")
-    print("-:- Single photoelectron -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Single photoelectron...
-    # --------------------------------------------------------------------
-    # Initial voltage for LED_1
-    voltageLED_1 = 2.5
-    # Initial values of control (auxiliary) parameters
-    a = 0       # Stores the value returned by 10Percento.exe program;
-    b = 0       # Stores returned value of 10Percento.exe program in previous execution;
-    c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
-                #   then, next steps to increment/decrement LED voltage will be more thick;
-
-    maximumTries = 10
-    currentTry = 0
-
-    while (True):
-        # Inform details if debugging
-        if (activeDebugging):
-            print("---------")
-            print("Setting voltage %.3f to LED 1..." % (voltageLED_1/2))
-            print("---------")
-
-        # LED_1 is connected to channel 8, so, simply set voltage output to that channel
-        spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=(voltageLED_1/2))
-
-        # ----------------------------------------------------------------
-        # Trigger CAEN digitizer running WaveDump
-        # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=5000)     # PRODUCTION
-        triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=1000)
-
-        if (triggered):
-            # Then process (10 Percent) output files of WaveDump
-            spmtControllerObj.call10PercentProcess()
-        else:
-            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump during single photoelectron measuring")
-            return -1
-
-        # ----------------------------------------------------------------
-        # Logic to incread/decrease LED_1 intensity
-        a = spmtControllerObj.read10PercentResultContent()
-
-        # ---------
-        if ((a == 0) or (currentTry >= maximumTries)):
-            break
-
-        # ---------
-        voltageLED_1, a, b, c = calcNewVoltageLED(voltageLED_1, a, b, c, 0.2, 5)
-
-        # ---------
-        c = a
-
-        # This is for instrumentation only
-        currentTry += 1
-
-    # --------------------------------------------------------------------
-    # Acquire new WaveDump files with LED configured with 10 percent
-    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=100000)     # PRODUCTION 
-    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=100, numberOfPulses=1000)
-
-    if (triggered):
-        # Then rename files for single photoelectron
-        spmtControllerObj.renameWaveFilesForSinglePhotoelectron()
-    else:
-        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at 10 percent")
-        return -1
-
-    print("----------------------------------------------------------------")
-    print("-:- Intense LED light -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Intense LED light start...
-    # --------------------------------------------------------------------
-    # Initial voltage for LED_1
-    voltageLED_1 = 7
-    # Initial values of control (auxiliary) parameters
-    a = 0       # Stores the value returned by 10Percento.exe program;
-    b = 0       # Stores returned value of 10Percento.exe program in previous execution;
-    c = 0       # Each time the direction of increment/decrement of LED voltage is inverted, "b" is incremented,
-                #   then, next steps to increment/decrement LED voltage will be more thick;
-
-    maximumTries = 10
-    currentTry = 0
-
-    while (True):
-        # Inform details if debugging
-        if (activeDebugging):
-            print("---------")
-            print("Setting voltage %.3f to LED 1..." % (voltageLED_1/2))
-            print("---------")
-
-        # LED_1 is connected to channel 8, so, simply set voltage output to that channel
-        spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=(voltageLED_1/2))
-
-        # ----------------------------------------------------------------
-        # Trigger CAEN digitizer running WaveDump
-        # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=150)     # PRODUCTION
-        triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=150)
-
-        if (triggered):
-            # Then process Search ("Ricerca") output files of WaveDump
-            spmtControllerObj.callSearchProcess()
-        else:
-            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump during intense LED measuring")
-            return -1
-
-        # ----------------------------------------------------------------
-        # Logic to incread/decrease LED_1 intensity
-        a = spmtControllerObj.readSearchResultContent()
-
-        # ---------
-        if ((a == 0) or (currentTry >= maximumTries)):
-            break
-
-        # ---------
-        voltageLED_1, a, b, c = calcNewVoltageLED(voltageLED_1, a, b, c, 0.5, 5)
-
-        # ---------
-        c = a
-
-        # This is for instrumentation only
-        currentTry += 1
-
-    # --------------------------------------------------------------------
-    # Acquire new WaveDump files with LED configured with high intensity
-    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)     # PRODUCTION 
-    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)
-
-    if (triggered):
-        # Then rename files for intense LED
-        spmtControllerObj.renameWaveFilesForIntenseLED()
-    else:
-        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at intense LED")
-        return -1
-
-    print("----------------------------------------------------------------")
-    print("-:- Low LED light -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Low LED light start...
-    # --------------------------------------------------------------------
-    # Send initial voltage
-    lowLEDVoltage = 1.25
-    # Reset all voltages of operational channels
-    spmtControllerObj.setVoltageToAllChannels(voltage=lowLEDVoltage/2)
-
-    # --------------------------------------------------------------------
-    # Store voltages for single photoelectron
-    storedVoltagesPh = spmtControllerObj.storeVoltagesForSinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageLowLED=lowLEDVoltage, voltageFactor=(2100.0/2.5))
-
-    if (not storedVoltagesPh):
-        abortProgram(spmtController=spmtControllerObj, executionStep="storing voltages for single photoelectron and low LED")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Acquire new WaveDump files with LED configured with low intensity
-    # triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)     # PRODUCTION 
-    triggered = spmtControllerObj.callWaveDumpAndTriggerDigitizer(frequency=10, numberOfPulses=600)
-
-    if (triggered):
-        # Then rename files for low LED
-        spmtControllerObj.renameWaveFilesForLowLED()
-    else:
-        abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire waves at low LED")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Finally, call Single Photoelectron processing
-    processedSingle = spmtControllerObj.callSinglePhotoelectronProcess()
-
-    if (not processedSingle):
-        abortProgram(spmtController=spmtControllerObj, executionStep="processing single photoelectron from acquired data")
-        return -1
-
-    print("----------------------------------------------------------------")
-    print("-:- Linearity -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Linearity...
-    # --------------------------------------------------------------------
-    # Power off LED_1 (of single photoelectron) which is connected to channel 8, so, simply set "0" voltage output to that channel
-    voltageLED_1 = 0
-    #
-    spmtControllerObj.setVoltageToOneChannel(channel=8, voltage=voltageLED_1)
-
-    # --------------------------------------------------------------------
-    # Read voltages gain to calculate new voltages to set before linearity procedure...
-    listOfNewVoltages, readVoltagesGain = spmtControllerObj.readVoltagesCalculatedBySinglePhotoelectron(voltagesArray=listOfVoltagesRead, voltageFactor=(2.5/2100.0))
-
-    if (not readVoltagesGain):
-        abortProgram(spmtController=spmtControllerObj, executionStep="reading voltages gain calculated by single photoelectron")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Reset all voltages of operational channels (divide each element by 2 before to pass it)
-    setNewVoltages = spmtControllerObj.setVoltageToAllChannelsByArray(voltagesArray=[i / 2 for i in listOfNewVoltages])
-
-    if (not setNewVoltages):
-        abortProgram(spmtController=spmtControllerObj, executionStep="setting new voltages before linearity processing")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Parameters for linearity processing
-    numberOfColpi = 30
-    numberOfSteps = 50
-    # 
-    voltageLED_2 = 0
-    voltageLED_3 = 0
-    # 
-    incrementLED_2 = 0.15
-    incrementLED_3 = 0.1
-    #
-    initialVoltageLED_2 = 4.0
-    initialVoltageLED_3 = 4.0
-
-    # --------------------------------------------------------------------
-    # Save configuration of linearity processing
-    savedConfigLinearity = spmtControllerObj.storeLinearityConfiguration(numberOfColpi=numberOfColpi, numberOfSteps=numberOfSteps)
-
-    if (not savedConfigLinearity):
-        abortProgram(spmtController=spmtControllerObj, executionStep="saving configuration file with parameters for linearity processing")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Acquire new WaveDump files meanwhile alternate LED 2 and 3 voltages during desired number of steps
-    startedWaveDump = spmtControllerObj.startWaveDumpAcquisition()
-    # Call WaveDump program
-    startedWaveDump = startedWaveDump and spmtControllerObj.callWaveDump()
-
-    if (not startedWaveDump):
-        abortProgram(spmtController=spmtControllerObj, executionStep="starting WaveDump during linearity data acquisition")
-        return -1
-
-    # --------------------------------------------------------------------
-    # Repeat acquisition for desired number of steps, recalculating voltages for LEDs 2 and 3
-    for step in range(numberOfSteps):
-        # Recalculate voltages...
-        voltageLED_2 = initialVoltageLED_2 + (step * incrementLED_2)
-        voltageLED_3 = initialVoltageLED_3 + (step * incrementLED_3)
-
-        # --------------------------------------------------------------------
-        # (1) Set voltages...
-        # --------------------------------------------------------------------
-        # LED_2 in channel "9"
-        spmtControllerObj.setVoltageToOneChannel(channel=9, voltage=(voltageLED_2 / 2))
-        # LED_3 in channel "10"
-        spmtControllerObj.setVoltageToOneChannel(channel=10, voltage=0)
-
-        if (activeDebugging):
-            print("---------")
-            print("LEDs during linearity data acquisition: <A> ON and <B> OFF.")
-            print("---------")
-
-        # Call Trigger
-        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
-
-        if (not triggered):
-            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
-            return -1
-
-        # --------------------------------------------------------------------
-        # (2) Set voltages...
-        # --------------------------------------------------------------------
-        # LED_3 in channel "10"
-        spmtControllerObj.setVoltageToOneChannel(channel=10, voltage=(voltageLED_3 / 2))
-
-        if (activeDebugging):
-            print("---------")
-            print("LEDs during linearity data acquisition: <A> ON and <B> ON.")
-            print("---------")
-
-        # Call Trigger
-        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
-
-        if (not triggered):
-            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
-            return -1
-
-        # --------------------------------------------------------------------
-        # (3) Set voltages...
-        # --------------------------------------------------------------------
-        # LED_2 in channel "9"
-        spmtControllerObj.setVoltageToOneChannel(channel=9, voltage=0)
-
-        if (activeDebugging):
-            print("---------")
-            print("LEDs during linearity data acquisition: <A> OFF and <B> ON.")
-            print("---------")
-
-        # Call Trigger
-        triggered = spmtControllerObj.triggerDigitizer(frequency=10, numberOfPulses=numberOfColpi)
-
-        if (not triggered):
-            abortProgram(spmtController=spmtControllerObj, executionStep="triggering digitizer and running WaveDump to acquire linearity data")
-            return -1
-
-    # --------------------------------------------------------------------
-    # Inform WaveDump to stop acquisition and close
-    stopedWaveDump = spmtControllerObj.stopWaveDumpAcquisition()
-
-    if (stopedWaveDump):
-        # Finally, call Linearity processing
-        processedLinearity = spmtControllerObj.callLinearityProcess()
-
-        if (not processedLinearity):
-            abortProgram(spmtController=spmtControllerObj, executionStep="processing linearity from acquired data")
-            return -1
-    else:
-        abortProgram(spmtController=spmtControllerObj, executionStep="stopping WaveDump during linearity data acquisition")
-        return -1
-
-    print("----------------------------------------------------------------")
-    print("-:- Turn the voltages off -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # Turn the voltages off...
-    spmtControllerObj.setVoltageToAllChannels(voltage=0)
-
-    print("----------------------------------------------------------------")
-    print("-:- End of program -:-")
-    print("----------------------------------------------------------------")
-    # --------------------------------------------------------------------
-    # End
-    spmtControllerObj.closeConnection()
-
-    return 0
+    orchestrator = Orchestrator()
+    orchestrator.executeProgram()
 
 
 if __name__ == "__main__": main()
