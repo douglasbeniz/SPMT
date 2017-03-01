@@ -10,6 +10,8 @@ from time import sleep
 
 from PyQt5.QtCore import pyqtSignal, QObject
 
+MAXIMUM_CHANNELS = 16
+
 """
 Abstraction of Linduino board
 """
@@ -92,6 +94,7 @@ class SmallPhotoMultiplierTubeController():
     def __init__(self):
         # Initialize attributes
         self.numberOfChannels = 8               # Default 8 channels, from 0 to 7
+        self.channelNumber = 0                  # Default channel 0
         self.debug = False                      # Default is NO debug, False
         # Managed files
         # .log
@@ -121,11 +124,19 @@ class SmallPhotoMultiplierTubeController():
 
 
     def setNumberOfChannels(self, number=1):
-        if (number and number >= 1):
+        if (number and number >= 1 and number <= MAXIMUM_CHANNELS):
             self.numberOfChannels = number
         else:
             print("Invalid number of channels...")
 
+    def getChannelNumber(self):
+        return self.channelNumber
+
+    def setChannelNumber(self, number=0):
+        if (number >= 0 and number < MAXIMUM_CHANNELS):
+            self.channelNumber = number
+        else:
+            print("Invalid channel number...")
 
     def isDebug(self):
         return self.debug
@@ -136,8 +147,17 @@ class SmallPhotoMultiplierTubeController():
 
 
     def setVoltageToAllChannels(self, voltage=0):
-        for channel in range(self.getNumberOfChannels()):
-            self.setVoltageToOneChannel(channel, voltage)
+        try:
+            if (voltage == 0):
+                # Resetting voltage, so, apply to all channels
+                self.setVoltageToOneChannel(MAXIMUM_CHANNELS, voltage)
+            elif (self.getNumberOfChannels() > 1):
+                for channel in range(self.getNumberOfChannels()):
+                    self.setVoltageToOneChannel(channel, voltage)
+            else:
+                self.setVoltageToOneChannel(self.getChannelNumber(), voltage)
+        except:
+            print("Error setting voltage!")
 
 
     def setVoltageToAllChannelsByArray(self, voltagesArray=[]):
@@ -145,8 +165,11 @@ class SmallPhotoMultiplierTubeController():
 
         try:
             if (len(voltagesArray) == self.getNumberOfChannels()):
-                for channel in range(self.getNumberOfChannels()):
-                    self.setVoltageToOneChannel(channel, voltagesArray[channel])
+                if (self.getNumberOfChannels() > 1):
+                    for channel in range(self.getNumberOfChannels()):
+                        self.setVoltageToOneChannel(channel, voltagesArray[channel])
+                else:
+                    self.setVoltageToOneChannel(self.getChannelNumber(), voltagesArray[self.getChannelNumber()])
             else:
                 status = False
                 print("Inconsistent number of voltage values for all selected channels...")
@@ -189,8 +212,11 @@ class SmallPhotoMultiplierTubeController():
     def setMuxToAllChannels(self, enable=False):
         listOfVoltagesRead = []
 
-        for channel in range(self.getNumberOfChannels()):
-            listOfVoltagesRead.append(self.setMuxToOneChannel(channel, enable))
+        if (self.numberOfChannels > 1):
+            for channel in range(self.getNumberOfChannels()):
+                listOfVoltagesRead.append(self.setMuxToOneChannel(channel, enable))
+        else:
+            listOfVoltagesRead.append(self.setMuxToOneChannel(self.getChannelNumber(), enable))
 
         if (self.isDebug()):
             print("---------")
@@ -503,6 +529,21 @@ class SmallPhotoMultiplierTubeController():
             pass
 
         return status
+
+    def killWaveDump(self):
+        if (self.isDebug()):
+            print("---------")
+            print("Killing WaveDump...")
+
+        try:
+            os.system("/bin/ps -ef | grep wavedump | grep -v grep | awk \'{print $2}\' | xargs kill -9")
+            sleep(1)
+            os.system("/bin/ps -ef | grep wavedump | grep -v grep | awk \'{print $2}\' | xargs kill -9")
+        except:
+            #print("Error when trying to kill WaveDump...")
+            pass
+
+        return
 
 
     def callWaveDumpAndTriggerDigitizer(self, frequency, numberOfPulses):
@@ -925,6 +966,10 @@ class SmallPhotoMultiplierTubeController():
                 pass
 
 
+    def reconnect(self):
+        if (self.linduinoObj):
+            self.linduinoObj.reconnect()
+
     def closeConnection(self):
         if (self.linduinoObj):
             self.linduinoObj.closeConnection()
@@ -942,6 +987,7 @@ class Orchestrator(QObject):
     # Signals to communicate with UI
     informExecution = pyqtSignal(str)
     fillTable = pyqtSignal(int, int, str)
+    resetButtons = pyqtSignal()
 
     def __init__(self):
         QObject.__init__(self)
@@ -950,6 +996,8 @@ class Orchestrator(QObject):
 
         # -------------------------------------------
         # Local attributes - Values for production
+        self.numberOfChannels       = 1
+        self.channelNumber          = 0
         self.initialVoltage         = 1.75
         self.maxVoltageError        = 0.02
         self.voltageFactor          = 2.0       # 5.1
@@ -1018,6 +1066,8 @@ class Orchestrator(QObject):
             print("----------------------------------------------------------------")
             self.informExecution.emit("----------------------------------------------------------------")
             self.informExecution.emit("Error when %s.  Aborting the program..." % (executionStep))
+            # Reset buttons status
+            self.resetButtons.emit()
 
             if (self.spmtControllerObj):
                 # Turn the voltages off...
@@ -1033,8 +1083,18 @@ class Orchestrator(QObject):
         print("----------------------------------------------------------------")
         print("-:- Start of program -:-")
         print("----------------------------------------------------------------")
-         # Only for commissioning
+        # Try to reconnect...
+        # Close connection, if any
+        self.spmtControllerObj.reconnect()
+
+        # Only for commissioning
         self.spmtControllerObj.setDebug(self.activeDebugging)
+
+        # Set number of channels and channel number (in the case of just one channel)
+        self.spmtControllerObj.setNumberOfChannels(self.numberOfChannels)
+        print("Setting %d channel(s) to collect." % (self.numberOfChannels))
+        self.spmtControllerObj.setChannelNumber(self.channelNumber)
+        print("Setting the channel %d as default." % (self.channelNumber))
 
         print("----------------------------------------------------------------")
         print("-:- Set initial voltages -:-")
@@ -1053,8 +1113,11 @@ class Orchestrator(QObject):
         self.informExecution.emit("Getting voltages from MUX...")
 
         # Emit signal to inform UI table...
-        for index, voltage in enumerate(listOfVoltagesRead):
-            self.fillTable.emit(index, 0, str(round(float(voltage), 3)))
+        if (self.numberOfChannels > 1):
+            for index, voltage in enumerate(listOfVoltagesRead):
+                self.fillTable.emit(index, 0, str(round(float(voltage), 3)))
+        else:
+            self.fillTable.emit(self.channelNumber, 0, str(round(float(listOfVoltagesRead[0]), 3)))
 
         print("----------------------------------------------------------------")
         print("-:- Disble MUX -:-")
@@ -1088,11 +1151,17 @@ class Orchestrator(QObject):
         listOfMonitorsRead = self.spmtControllerObj.readMonitorsOfAllChannels()
 
         # Emit signal to inform UI table...
-        for index, (monitor, voltage) in enumerate(zip(listOfMonitorsRead, listOfVoltagesRead)):
+        if (self.numberOfChannels > 1):
+            for index, (monitor, voltage) in enumerate(zip(listOfMonitorsRead, listOfVoltagesRead)):
+                # VMon
+                self.fillTable.emit(index, 1, str(round(float(monitor[1]), 3)))
+                # IMon
+                self.fillTable.emit(index, 2, str(round(float(monitor[0]), 3)))
+        else:
             # VMon
-            self.fillTable.emit(index, 1, str(round(float(monitor[1]), 3)))
+            self.fillTable.emit(self.channelNumber, 1, str(round(float(listOfMonitorsRead[0][1]), 3)))
             # IMon
-            self.fillTable.emit(index, 2, str(round(float(monitor[0]), 3)))
+            self.fillTable.emit(self.channelNumber, 2, str(round(float(listOfMonitorsRead[0][0]), 3)))            
 
         print("----------------------------------------------------------------")
         print("-:- Validate IMon and VMon -:-")
@@ -1432,6 +1501,10 @@ class Orchestrator(QObject):
 
         return 0
 
+
+    def reset(self):
+        self.abortProgram(executionStep="operating...")
+        self.spmtControllerObj.killWaveDump()
 
 # --------------------------------------------------------------------
 """

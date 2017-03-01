@@ -19,6 +19,7 @@ class SPMT_Interface(QMainWindow):
         self.initialSetup()
 
         # Perform connections with methods of execution
+        self.comboBox_numberOfChannels.currentIndexChanged.connect(self.changedNumberChannels)
         self.pushButton_exit.clicked.connect(self.exit)
         self.pushButton_reset.clicked.connect(self.reset)
         self.pushButton_runProgramm.clicked.connect(self.runProgramm)
@@ -29,6 +30,7 @@ class SPMT_Interface(QMainWindow):
         # Connect all slots
         self.orchestrator.informExecution.connect(self.informExecution)
         self.orchestrator.fillTable.connect(self.fillTable)
+        self.orchestrator.resetButtons.connect(self.resetButtons)
 
     #@pyqtSlot()
     def runProgramm(self):
@@ -41,6 +43,8 @@ class SPMT_Interface(QMainWindow):
         self.orchestrator.currentFactor          = float(eval(self.mainLayout.lineEdit_currentFactor.text()))
         self.orchestrator.maxVMonError           = float(self.mainLayout.lineEdit_maxVMonError.text())
         self.orchestrator.maxIMonError           = float(self.mainLayout.lineEdit_maxIMonError.text())
+        self.orchestrator.numberOfChannels       = int(self.comboBox_numberOfChannels.currentText())
+        self.orchestrator.channelNumber          = int(self.lineEdit_channelNumber.text())
         # -------------------------
         # Dark count tab
         self.orchestrator.darkCountFreq          = int(self.mainLayout.lineEdit_darkCountFreq.text())
@@ -86,13 +90,32 @@ class SPMT_Interface(QMainWindow):
         executeProgram = Thread(target=self.orchestrator.executeProgram)
         executeProgram.setDaemon(True)
         executeProgram.start()
+
+        # Disable run button
+        self.pushButton_runProgramm.setEnabled(False)
+        self.pushButton_reset.setEnabled(True)
     
+    def changedNumberChannels(self, index):
+        if (index == 0):
+            self.lineEdit_channelNumber.setEnabled(True)
+            self.lineEdit_channelNumber.setText("0")
+        else:
+            self.lineEdit_channelNumber.setEnabled(False)
+
     #@pyqtSlot()
     def reset(self):
         self.initialSetup()
+        self.orchestrator.reset()
+
+        # Disable run button
+        self.pushButton_runProgramm.setEnabled(True)
+        self.pushButton_reset.setEnabled(False)
 
     #@pyqtSlot()
     def exit(self):
+        self.orchestrator.reset()
+        # wait a while
+        sleep(3)
         self.close()
 
     def initialSetup(self):
@@ -154,8 +177,14 @@ class SPMT_Interface(QMainWindow):
     def informExecution(self, message=""):
         self.mainLayout.listWidget_logView.addItem(datetime.now().strftime('%d/%m/%Y %H:%m:%S') + " - " + message)
 
+    #@pyqtSlot()
     def fillTable(self, row, col, value):
         self.mainLayout.tableWidget_table.setItem(row, col, QTableWidgetItem(str(value)))
+
+    #@pyqtSlot()
+    def resetButtons(self):
+        self.pushButton_reset.setEnabled(False)
+        self.pushButton_runProgramm.setEnabled(True)
 
 """
 Main()
