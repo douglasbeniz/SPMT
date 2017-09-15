@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1068</width>
+    <width>1071</width>
     <height>577</height>
    </rect>
   </property>
@@ -17,10 +17,10 @@
    <widget class="QTableWidget" name="tableWidget_table">
     <property name="geometry">
      <rect>
-      <x>690</x>
-      <y>10</y>
-      <width>371</width>
-      <height>511</height>
+      <x>670</x>
+      <y>290</y>
+      <width>391</width>
+      <height>265</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -38,11 +38,17 @@
     <property name="sizeAdjustPolicy">
      <enum>QAbstractScrollArea::AdjustIgnored</enum>
     </property>
+    <property name="autoScrollMargin">
+     <number>8</number>
+    </property>
     <property name="editTriggers">
      <set>QAbstractItemView::NoEditTriggers</set>
     </property>
     <property name="sortingEnabled">
      <bool>false</bool>
+    </property>
+    <property name="rowCount">
+     <number>8</number>
     </property>
     <attribute name="horizontalHeaderVisible">
      <bool>true</bool>
@@ -51,7 +57,7 @@
      <bool>false</bool>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>100</number>
+     <number>110</number>
     </attribute>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>70</number>
@@ -112,46 +118,6 @@
     <row>
      <property name="text">
       <string>DAC7</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC8</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC9</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC10</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC11</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC12</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC13</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC14</string>
-     </property>
-    </row>
-    <row>
-     <property name="text">
-      <string>DAC15</string>
      </property>
     </row>
     <column>
@@ -289,126 +255,6 @@
       <string>24</string>
      </property>
     </item>
-    <item row="8" column="0">
-     <property name="text">
-      <string>25</string>
-     </property>
-    </item>
-    <item row="8" column="1">
-     <property name="text">
-      <string>26</string>
-     </property>
-    </item>
-    <item row="8" column="2">
-     <property name="text">
-      <string>27</string>
-     </property>
-    </item>
-    <item row="9" column="0">
-     <property name="text">
-      <string>28</string>
-     </property>
-    </item>
-    <item row="9" column="1">
-     <property name="text">
-      <string>29</string>
-     </property>
-    </item>
-    <item row="9" column="2">
-     <property name="text">
-      <string>30</string>
-     </property>
-    </item>
-    <item row="10" column="0">
-     <property name="text">
-      <string>31</string>
-     </property>
-    </item>
-    <item row="10" column="1">
-     <property name="text">
-      <string>32</string>
-     </property>
-    </item>
-    <item row="10" column="2">
-     <property name="text">
-      <string>33</string>
-     </property>
-    </item>
-    <item row="11" column="0">
-     <property name="text">
-      <string>34</string>
-     </property>
-    </item>
-    <item row="11" column="1">
-     <property name="text">
-      <string>35</string>
-     </property>
-    </item>
-    <item row="11" column="2">
-     <property name="text">
-      <string>36</string>
-     </property>
-    </item>
-    <item row="12" column="0">
-     <property name="text">
-      <string>37</string>
-     </property>
-    </item>
-    <item row="12" column="1">
-     <property name="text">
-      <string>38</string>
-     </property>
-    </item>
-    <item row="12" column="2">
-     <property name="text">
-      <string>39</string>
-     </property>
-    </item>
-    <item row="13" column="0">
-     <property name="text">
-      <string>40</string>
-     </property>
-    </item>
-    <item row="13" column="1">
-     <property name="text">
-      <string>41</string>
-     </property>
-    </item>
-    <item row="13" column="2">
-     <property name="text">
-      <string>42</string>
-     </property>
-    </item>
-    <item row="14" column="0">
-     <property name="text">
-      <string>43</string>
-     </property>
-    </item>
-    <item row="14" column="1">
-     <property name="text">
-      <string>44</string>
-     </property>
-    </item>
-    <item row="14" column="2">
-     <property name="text">
-      <string>45</string>
-     </property>
-    </item>
-    <item row="15" column="0">
-     <property name="text">
-      <string>46</string>
-     </property>
-    </item>
-    <item row="15" column="1">
-     <property name="text">
-      <string>47</string>
-     </property>
-    </item>
-    <item row="15" column="2">
-     <property name="text">
-      <string>48</string>
-     </property>
-    </item>
    </widget>
    <widget class="QPushButton" name="pushButton_exit">
     <property name="geometry">
@@ -476,7 +322,7 @@
      <rect>
       <x>10</x>
       <y>30</y>
-      <width>671</width>
+      <width>651</width>
       <height>221</height>
      </rect>
     </property>
@@ -599,7 +445,7 @@
        <rect>
         <x>570</x>
         <y>70</y>
-        <width>81</width>
+        <width>61</width>
         <height>28</height>
        </rect>
       </property>
@@ -612,7 +458,7 @@
        <rect>
         <x>570</x>
         <y>24</y>
-        <width>81</width>
+        <width>61</width>
         <height>28</height>
        </rect>
       </property>
@@ -685,11 +531,6 @@
       <item>
        <property name="text">
         <string>8</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>16</string>
        </property>
       </item>
      </widget>
@@ -1283,7 +1124,7 @@
      <widget class="QLineEdit" name="lineEdit_lowIntensVoltageFactor">
       <property name="geometry">
        <rect>
-        <x>327</x>
+        <x>321</x>
         <y>89</y>
         <width>111</width>
         <height>28</height>
@@ -1322,7 +1163,7 @@
      <widget class="QLabel" name="label_21">
       <property name="geometry">
        <rect>
-        <x>226</x>
+        <x>220</x>
         <y>44</y>
         <width>101</width>
         <height>31</height>
@@ -1354,7 +1195,7 @@
      <widget class="QLineEdit" name="lineEdit_channelOfLED_2">
       <property name="geometry">
        <rect>
-        <x>568</x>
+        <x>562</x>
         <y>44</y>
         <width>71</width>
         <height>28</height>
@@ -1367,7 +1208,7 @@
      <widget class="QLineEdit" name="lineEdit_lowIntensVoltageLEDs">
       <property name="geometry">
        <rect>
-        <x>328</x>
+        <x>322</x>
         <y>44</y>
         <width>111</width>
         <height>28</height>
@@ -1409,7 +1250,7 @@
      <widget class="QLabel" name="label_24">
       <property name="geometry">
        <rect>
-        <x>226</x>
+        <x>220</x>
         <y>80</y>
         <width>101</width>
         <height>41</height>
@@ -1438,7 +1279,7 @@
      <widget class="QLineEdit" name="lineEdit_channelOfLED_3">
       <property name="geometry">
        <rect>
-        <x>568</x>
+        <x>562</x>
         <y>89</y>
         <width>71</width>
         <height>28</height>
@@ -1485,7 +1326,7 @@
      <widget class="QLineEdit" name="lineEdit_numberOfColpi">
       <property name="geometry">
        <rect>
-        <x>560</x>
+        <x>558</x>
         <y>32</y>
         <width>71</width>
         <height>28</height>
@@ -1556,7 +1397,7 @@
      <widget class="QLabel" name="label_28">
       <property name="geometry">
        <rect>
-        <x>462</x>
+        <x>460</x>
         <y>27</y>
         <width>91</width>
         <height>41</height>
@@ -1572,7 +1413,7 @@
      <widget class="QLineEdit" name="lineEdit_numberOfSteps">
       <property name="geometry">
        <rect>
-        <x>560</x>
+        <x>558</x>
         <y>77</y>
         <width>71</width>
         <height>28</height>
@@ -1601,7 +1442,7 @@
      <widget class="QLabel" name="label_30">
       <property name="geometry">
        <rect>
-        <x>462</x>
+        <x>460</x>
         <y>72</y>
         <width>91</width>
         <height>41</height>
@@ -1617,7 +1458,7 @@
      <widget class="QLabel" name="label_31">
       <property name="geometry">
        <rect>
-        <x>250</x>
+        <x>259</x>
         <y>30</y>
         <width>71</width>
         <height>31</height>
@@ -1633,7 +1474,7 @@
      <widget class="QLineEdit" name="lineEdit_incrementLED_2">
       <property name="geometry">
        <rect>
-        <x>338</x>
+        <x>347</x>
         <y>32</y>
         <width>71</width>
         <height>28</height>
@@ -1646,7 +1487,7 @@
      <widget class="QLabel" name="label_32">
       <property name="geometry">
        <rect>
-        <x>250</x>
+        <x>259</x>
         <y>72</y>
         <width>71</width>
         <height>31</height>
@@ -1662,7 +1503,7 @@
      <widget class="QLineEdit" name="lineEdit_incrementLED_3">
       <property name="geometry">
        <rect>
-        <x>338</x>
+        <x>347</x>
         <y>74</y>
         <width>71</width>
         <height>28</height>
@@ -1675,7 +1516,7 @@
      <widget class="QLineEdit" name="lineEdit_linearityAcqFreq">
       <property name="geometry">
        <rect>
-        <x>560</x>
+        <x>558</x>
         <y>124</y>
         <width>71</width>
         <height>28</height>
@@ -1688,7 +1529,7 @@
      <widget class="QLabel" name="label_33">
       <property name="geometry">
        <rect>
-        <x>462</x>
+        <x>460</x>
         <y>119</y>
         <width>91</width>
         <height>41</height>
@@ -1699,6 +1540,32 @@
       </property>
       <property name="wordWrap">
        <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="Line" name="line_7">
+      <property name="geometry">
+       <rect>
+        <x>430</x>
+        <y>25</y>
+        <width>20</width>
+        <height>141</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+     </widget>
+     <widget class="Line" name="line_8">
+      <property name="geometry">
+       <rect>
+        <x>231</x>
+        <y>26</y>
+        <width>20</width>
+        <height>141</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
      </widget>
     </widget>
@@ -1727,8 +1594,8 @@
      <rect>
       <x>10</x>
       <y>330</y>
-      <width>671</width>
-      <height>192</height>
+      <width>651</width>
+      <height>225</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -1741,8 +1608,8 @@
    <widget class="QCheckBox" name="checkBox_debug">
     <property name="geometry">
      <rect>
-      <x>590</x>
-      <y>272</y>
+      <x>430</x>
+      <y>273</y>
       <width>92</width>
       <height>22</height>
      </rect>
@@ -1751,19 +1618,247 @@
      <string>Debug</string>
     </property>
    </widget>
+   <widget class="QTableWidget" name="tableWidget_inputID">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>10</y>
+      <width>391</width>
+      <height>268</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>371</width>
+      <height>265</height>
+     </size>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::Box</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Plain</enum>
+    </property>
+    <property name="lineWidth">
+     <number>1</number>
+    </property>
+    <property name="midLineWidth">
+     <number>1</number>
+    </property>
+    <property name="sizeAdjustPolicy">
+     <enum>QAbstractScrollArea::AdjustIgnored</enum>
+    </property>
+    <property name="autoScrollMargin">
+     <number>8</number>
+    </property>
+    <property name="editTriggers">
+     <set>QAbstractItemView::AllEditTriggers</set>
+    </property>
+    <property name="sortingEnabled">
+     <bool>false</bool>
+    </property>
+    <property name="rowCount">
+     <number>8</number>
+    </property>
+    <attribute name="horizontalHeaderVisible">
+     <bool>true</bool>
+    </attribute>
+    <attribute name="horizontalHeaderCascadingSectionResizes">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>100</number>
+    </attribute>
+    <attribute name="horizontalHeaderMinimumSectionSize">
+     <number>40</number>
+    </attribute>
+    <attribute name="horizontalHeaderStretchLastSection">
+     <bool>true</bool>
+    </attribute>
+    <attribute name="verticalHeaderCascadingSectionResizes">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>30</number>
+    </attribute>
+    <attribute name="verticalHeaderMinimumSectionSize">
+     <number>25</number>
+    </attribute>
+    <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderStretchLastSection">
+     <bool>true</bool>
+    </attribute>
+    <row>
+     <property name="text">
+      <string>Ch 1</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 2</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 3</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 4</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 5</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 6</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 7</string>
+     </property>
+    </row>
+    <row>
+     <property name="text">
+      <string>Ch 8</string>
+     </property>
+    </row>
+    <column>
+     <property name="text">
+      <string>HV model</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>S/N</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>f(x) = ax +b (a)</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>f(x) = ax +b (b)</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+     </property>
+    </column>
+    <item row="0" column="0">
+     <property name="text">
+      <string>A7501PB</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+     </property>
+     <property name="flags">
+      <set>ItemIsSelectable|ItemIsEditable|ItemIsDragEnabled|ItemIsUserCheckable|ItemIsEnabled</set>
+     </property>
+    </item>
+    <item row="0" column="1">
+     <property name="text">
+      <string>066</string>
+     </property>
+    </item>
+    <item row="0" column="2">
+     <property name="text">
+      <string>846.3831157965</string>
+     </property>
+    </item>
+    <item row="0" column="3">
+     <property name="text">
+      <string>3.712840922</string>
+     </property>
+    </item>
+    <item row="1" column="0">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="flags">
+      <set>ItemIsSelectable|ItemIsEditable|ItemIsDragEnabled|ItemIsUserCheckable|ItemIsEnabled</set>
+     </property>
+    </item>
+   </widget>
+   <widget class="QPushButton" name="pushButton_save">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>259</y>
+      <width>61</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Save configuration...</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset resource="icons/icons.qrc">
+      <normaloff>:/icons/save.png</normaloff>:/icons/save.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>45</width>
+      <height>45</height>
+     </size>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_open">
+    <property name="geometry">
+     <rect>
+      <x>530</x>
+      <y>259</y>
+      <width>61</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Open configuration...</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset resource="icons/icons.qrc">
+      <normaloff>:/icons/open.png</normaloff>:/icons/open.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>45</width>
+      <height>45</height>
+     </size>
+    </property>
+   </widget>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1068</width>
-     <height>25</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <resources/>
+ <resources>
+  <include location="icons/icons.qrc"/>
+ </resources>
  <connections/>
 </ui>
